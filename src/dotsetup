@@ -43,3 +43,4 @@ dotfiles checkout || { echo "Failed to checkout dotfiles."; exit 1; }
 dotfiles config --local status.showUntrackedFiles no
 
 echo "Dotfile installation complete."
+echo
