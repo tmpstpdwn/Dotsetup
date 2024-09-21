@@ -1,4 +1,4 @@
-# Dotsetup Script
+# Dotsetup
 
 The Dotsetup script automates the installation of dotfiles from a specified Git repository. It backs up existing files in your home directory and clones the latest commit of the dotfiles repository.
 
@@ -46,5 +46,5 @@ If you encounter issues, ensure that the repository URL is correct and that you 
 Check that you have Git installed and properly configured on your machine.
 
 ## License
-This script is licensed under GPL3 [LICENSE](LICENSE).
+This script is licensed under AGPL3 [LICENSE](LICENSE).
 
