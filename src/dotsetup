@@ -1,0 +1,45 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <repository-url>"
+    exit 1
+fi
+
+echo
+echo " Dotsetup"
+echo "----------"
+echo
+
+cd $HOME || { echo "Failed to cd $HOME"; exit 1; }
+
+read -p "This program will move all the things in $HOME to .backup/ for dotfile installation. Proceed? (y/N) " confirm
+if [[ $confirm != "y" ]]; then
+    { echo "Aborting."; exit 1; }
+fi
+
+# Create a backup directory if it doesn't exist
+mkdir -p .backup
+
+# Move existing files to the backup directory
+echo "Moving existing files in $HOME to .backup/..."
+for file in .* *; do
+    # Skip the backup directory itself and the current directory
+    if [[ "$file" != ".backup" && "$file" != "." && "$file" != ".." ]]; then
+        mv "$file" .backup/ || { echo "Failed to move $file to .backup."; exit 1; }
+    fi
+done
+
+alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+echo ".dotfiles" >> .gitignore
+
+# Clone the bare repository
+echo "Cloning repository..."
+git clone --bare "$1" --depth 1 $HOME/.dotfiles || { echo "Failed to clone repository."; exit 1; }
+
+# Checkout the dotfiles
+echo "Checking out dotfiles..."
+dotfiles checkout || { echo "Failed to checkout dotfiles."; exit 1; }
+
+dotfiles config --local status.showUntrackedFiles no
+
+echo "Dotfile installation complete."
