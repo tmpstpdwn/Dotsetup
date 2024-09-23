@@ -6,7 +6,7 @@
 dotrepo="https://github.com/tmpstpdwn/.dotfiles"
 
 # Define the path to the packages file
-package_file="$HOME/packages"
+package_file="$HOME/.packages"
 
 # Directory array
 folders=(
