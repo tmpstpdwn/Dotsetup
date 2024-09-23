@@ -1,11 +1,36 @@
 #!/bin/bash
 
+### IMPORTANT VARIABLES ###
+
+# git repo for dotfiles
+dotrepo="https://github.com/tmpstpdwn/.dotfiles"
+
+# Define the path to the packages file
+package_file="$HOME/packages"
+
+# Directory array
+folders=(
+    "$HOME/Documents" "$HOME/Downloads" "$HOME/Files" \
+    "$HOME/Pictures" "$HOME/Repos" "$HOME/Videos" \
+    "$HOME/Pictures/Screenshots"
+)
+
+# Define the repository URLs and their corresponding directories
+declare -A repos
+repos=(
+    ["https://github.com/tmpstpdwn/dmenu"]="$HOME/Repos/dmenu"
+    ["https://github.com/tmpstpdwn/wallpapers"]="$HOME/Pictures/Wallpapers"
+)
+
+### FUNCTIONS ###
+
 # Function to print a section header
 function print_header() {
+    clear
     echo
-    echo "------------------"
-    echo "  $1"
-    echo "------------------"
+    echo "--------------------"
+    echo "  Postinstallation - $1"
+    echo "--------------------"
     echo
 }
 
@@ -40,7 +65,7 @@ function setup_dotfiles() {
 
     # Clone the bare repository
     echo "Cloning repository..."
-    git clone --bare "$1" --depth 1 "$HOME/.dotfiles" || { echo "Failed to clone repository."; exit 1; }
+    git clone --bare "$dotrepo" --depth 1 "$HOME/.dotfiles" || { echo "Failed to clone repository."; exit 1; }
 
     # Checkout the dotfiles
     echo "Checking out dotfiles..."
@@ -58,13 +83,6 @@ function setup_dotfiles() {
 function create_directories() {
     print_header "Important Directories Setup"
 
-    # Directory array
-    folders=(
-        "$HOME/Documents" "$HOME/Downloads" "$HOME/Files" \
-        "$HOME/Pictures" "$HOME/Repos" "$HOME/Videos" \
-        "$HOME/Pictures/Screenshots"
-    )
-
     # Loop through the array and create folders
     for folder in "${folders[@]}"; do
         mkdir -p "$folder" # -p ensures no error if the folder already exists
@@ -78,9 +96,6 @@ function create_directories() {
 # Function to install packages
 function install_packages() {
     print_header "Package Installation"
-
-    # Define the path to the packages file
-    package_file="$HOME/packages"
 
     # Check if the file exists
     if [[ ! -f "$package_file" ]]; then
@@ -111,24 +126,38 @@ function install_packages() {
     echo
 }
 
+# Function to set up repositories at specific locations
+function setup_repos() {
+    print_header "Repositories Setup"
+
+    # Loop through the repositories array and clone them to their respective directories
+    for repo_url in "${!repos[@]}"; do
+        dest_dir="${repos[$repo_url]}"
+        echo "Cloning $repo_url into $dest_dir..."
+        git clone "$repo_url" "$dest_dir" || { echo "Failed to clone $repo_url"; exit 1; }
+        echo "Cloned $repo_url to $dest_dir"
+    done
+
+    echo "Repositories setup completed."
+    echo
+}
+
 # Main function to execute post-installation tasks
 function post_installation() {
-    print_header "Postinstallation"
-
-    # Check if a repository URL is provided
-    if [ -z "$1" ]; then
-        echo "Usage: $0 <repository-url>"
-        exit 1
-    fi
 
     # Execute each section
-    setup_dotfiles "$1"
+    setup_dotfiles
     create_directories
     install_packages
+    setup_repos
 
     echo "Post installation complete."
     echo
 }
 
+### MAIN ###
+
 # Run the main function with the provided argument
-post_installation "$1"
+post_installation
+
+### END ###
