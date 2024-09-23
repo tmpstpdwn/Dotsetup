@@ -147,10 +147,13 @@ function post_installation() {
 
     # Execute each section
     setup_dotfiles
+    sleep 1
     create_directories
+    sleep 1
     install_packages
+    sleep 1
     setup_repos
-
+    sleep 1
     echo "Post installation complete."
     echo
 }
