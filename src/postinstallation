@@ -1,105 +1,134 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <repository-url>"
-    exit 1
-fi
+# Function to print a section header
+function print_header() {
+    echo
+    echo "------------------"
+    echo "  $1"
+    echo "------------------"
+    echo
+}
 
-echo
-echo " Postinstallation"
-echo "------------------"
-echo
+# Function to handle dotfiles setup
+function setup_dotfiles() {
+    print_header "Dotfiles Setup"
 
-echo "- Dotfiles setup"
-echo
+    cd "$HOME" || { echo "Failed to cd to $HOME"; exit 1; }
 
-cd $HOME || { echo "Failed to cd $HOME"; exit 1; }
-
-read -p "This program will move all the things in $HOME to .backup/ for dotfile installation. Proceed? (y/N) " confirm
-if [[ $confirm != "y" ]]; then
-    { echo "Aborting."; exit 1; }
-fi
-
-# Create a backup directory if it doesn't exist
-mkdir -p .backup
-
-# Move existing files to the backup directory
-echo "Moving existing files in $HOME to .backup/..."
-for file in .* *; do
-    # Skip the backup directory itself and the current directory
-    if [[ "$file" != ".backup" && "$file" != "." && "$file" != ".." ]]; then
-        mv "$file" .backup/ || { echo "Failed to move $file to .backup."; exit 1; }
+    read -p "This program will move all the things in $HOME to .backup/ for dotfile installation. Proceed? (y/N) " confirm
+    if [[ $confirm != "y" ]]; then
+        { echo "Aborting."; exit 1; }
     fi
-done
 
-alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
-echo ".dotfiles" >> .gitignore
+    # Create a backup directory if it doesn't exist
+    mkdir -p .backup
 
-# Clone the bare repository
-echo "Cloning repository..."
-git clone --bare "$1" --depth 1 $HOME/.dotfiles || { echo "Failed to clone repository."; exit 1; }
+    # Move existing files to the backup directory
+    echo "Moving existing files in $HOME to .backup/..."
+    for file in .* *; do
+        # Skip the backup directory itself and the current directory
+        if [[ "$file" != ".backup" && "$file" != "." && "$file" != ".." ]]; then
+            mv "$file" .backup/ || { echo "Failed to move $file to .backup."; exit 1; }
+        fi
+    done
 
-# Checkout the dotfiles
-echo "Checking out dotfiles..."
-dotfiles checkout || { echo "Failed to checkout dotfiles."; exit 1; }
+    # Set up alias for dotfiles management
+    alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+    echo "alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'" >> "$HOME/.bashrc"
+    source "$HOME/.bashrc"
+    echo ".dotfiles" >> .gitignore
 
-dotfiles config --local status.showUntrackedFiles no
-echo "Dotfile setup complete"
-echo
+    # Clone the bare repository
+    echo "Cloning repository..."
+    git clone --bare "$1" --depth 1 "$HOME/.dotfiles" || { echo "Failed to clone repository."; exit 1; }
 
-### IMPORTANT DIRS ###
+    # Checkout the dotfiles
+    echo "Checking out dotfiles..."
+    dotfiles checkout 2>&1 | grep -q "error" && {
+      echo "Some files already exist in your home directory and conflict with dotfiles."
+      exit 1
+    }
 
-echo "- Dirs setup"
+    dotfiles config --local status.showUntrackedFiles no
+    echo "Dotfile setup complete"
+    echo
+}
 
-# Directory array
+# Function to create important directories
+function create_directories() {
+    print_header "Important Directories Setup"
 
-folders=(
-    "$HOME/Documents" "$HOME/Downloads" "$HOME/Files" \
-    "$HOME/Pictures" "$HOME/Repos" "$HOME/Videos" \
-    "$HOME/Pictures/Screenshots"
-)
+    # Directory array
+    folders=(
+        "$HOME/Documents" "$HOME/Downloads" "$HOME/Files" \
+        "$HOME/Pictures" "$HOME/Repos" "$HOME/Videos" \
+        "$HOME/Pictures/Screenshots"
+    )
 
-# Loop through the array and create folders
-for folder in "${folders[@]}"; do
-  mkdir -p "$folder" # -p ensures no error if the folder already exists
-  echo "Created folder: $folder"
-done
+    # Loop through the array and create folders
+    for folder in "${folders[@]}"; do
+        mkdir -p "$folder" # -p ensures no error if the folder already exists
+        echo "Created folder: $folder"
+    done
 
-echo "Created important dirs"
-echo
+    echo "Important directories created"
+    echo
+}
 
-### Package setup ###
+# Function to install packages
+function install_packages() {
+    print_header "Package Installation"
 
-echo "- installing packages."
-echo
+    # Define the path to the packages file
+    package_file="$HOME/packages"
 
-# Define the path to the packages file
-package_file="$HOME/packages"
-
-# Check if the file exists
-if [[ ! -f "$package_file" ]]; then
-  echo "Error: The file $package_file does not exist."
-  exit 1
-fi
-
-# Read the file line by line and install each package
-while IFS= read -r package; do
-  if [[ -n "$package" && ! "$package" =~ ^# ]]; then # Ignore empty lines and comments
-    echo "Installing package: $package"
-
-    # Install the package using pacman
-    sudo pacman -S --noconfirm "$package"
-
-    if [[ $? -eq 0 ]]; then
-      echo "Successfully installed $package"
-    else
-      echo "Error installing $package"
+    # Check if the file exists
+    if [[ ! -f "$package_file" ]]; then
+        echo "Error: The file $package_file does not exist."
+        exit 1
     fi
-  fi
-done < "$package_file"
 
-echo "Packages installed."
-echo
+    # Log file for package installation
+    log_file="$HOME/package_install_log.txt"
 
-echo "Post installation complete."
-echo
+    # Read the file line by line and install each package
+    while IFS= read -r package; do
+        if [[ -n "$package" && ! "$package" =~ ^# ]]; then # Ignore empty lines and comments
+            echo "Installing package: $package"
+
+            # Install the package using pacman
+            sudo pacman -S --noconfirm "$package" >> "$log_file" 2>&1
+
+            if [[ $? -eq 0 ]]; then
+                echo "Successfully installed $package"
+            else
+                echo "Error installing $package: see $log_file for details"
+            fi
+        fi
+    done < "$package_file"
+
+    echo "Package installation completed."
+    echo
+}
+
+# Main function to execute post-installation tasks
+function post_installation() {
+    print_header "Postinstallation"
+
+    # Check if a repository URL is provided
+    if [ -z "$1" ]; then
+        echo "Usage: $0 <repository-url>"
+        exit 1
+    fi
+
+    # Execute each section
+    setup_dotfiles "$1"
+    create_directories
+    install_packages
+
+    echo "Post installation complete."
+    echo
+}
+
+# Run the main function with the provided argument
+post_installation "$1"
