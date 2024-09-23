@@ -59,8 +59,6 @@ function setup_dotfiles() {
 
     # Set up alias for dotfiles management
     alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
-    echo "alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'" >> "$HOME/.bashrc"
-    source "$HOME/.bashrc"
     echo ".dotfiles" >> .gitignore
 
     # Clone the bare repository
