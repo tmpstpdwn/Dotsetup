@@ -112,7 +112,7 @@ function install_packages() {
             echo "Installing package: $package"
 
             # Install the package using pacman
-            sudo pacman -S --noconfirm "$package" >> "$log_file" 2>&1
+            pacman -Qi "$package" > /dev/null || sudo pacman -S --noconfirm "$package" >> "$log_file" 2>&1
 
             if [[ $? -eq 0 ]]; then
                 echo "Successfully installed $package"
