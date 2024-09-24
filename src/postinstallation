@@ -22,6 +22,12 @@ repos=(
     ["https://github.com/tmpstpdwn/wallpapers"]="$HOME/Pictures/Wallpapers"
 )
 
+# Relax time after each fn.
+relax=3
+
+# Countdown to reboot var.
+countdown=20
+
 ### FUNCTIONS ###
 
 # Function to print a section header
@@ -34,15 +40,42 @@ function print_header() {
     echo
 }
 
+# Function to print a section footer
+function print_footer() {
+    echo
+    echo " Done. - $1"
+    echo "********"
+    echo
+}
+
+# Fn to reboot after installation.
+function reboot_sys() {
+    print_header "Installation complete. Reboot?"
+    while [ $countdown -gt 0 ]; do
+        echo -ne "Reboot in ${countdown}s, Ctrl-C to cancel...\r";
+        sleep 1;
+        ((countdown--));
+    done
+    reboot
+}
+
+function startup() {
+    print_header "start?"
+    read -p "start ? [y/N]"
+    if [[ $confirm != "y" ]]; then
+        { echo "Aborting."; echo; exit 1; }
+    fi
+}
+
+
 # Function to handle dotfiles setup
 function setup_dotfiles() {
     print_header "Dotfiles Setup"
-
     cd "$HOME" || { echo "Failed to cd to $HOME"; exit 1; }
 
     read -p "This program will move all the things in $HOME to .backup/ for dotfile installation. Proceed? (y/N) " confirm
     if [[ $confirm != "y" ]]; then
-        { echo "Aborting."; exit 1; }
+        { echo "Aborting."; echo; exit 1; }
     fi
 
     # Create a backup directory if it doesn't exist
@@ -57,10 +90,8 @@ function setup_dotfiles() {
         fi
     done
 
-    # Define a function for dotfiles management
-    function dotfiles() {
-        /usr/bin/git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME" "$@"
-    }
+    # Set up alias for dotfiles management
+    alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
     echo ".dotfiles" >> .gitignore
 
     # Clone the bare repository
@@ -75,28 +106,23 @@ function setup_dotfiles() {
     }
 
     dotfiles config --local status.showUntrackedFiles no
-    echo "Dotfile setup complete"
-    echo
+    print_footer "Dotfile setup complete."
 }
 
 # Function to create important directories
 function create_directories() {
     print_header "Important Directories Setup"
-
     # Loop through the array and create folders
     for folder in "${folders[@]}"; do
         mkdir -p "$folder" # -p ensures no error if the folder already exists
         echo "Created folder: $folder"
     done
-
-    echo "Important directories created"
-    echo
+    print_footer "Important directories created."
 }
 
 # Function to install packages
 function install_packages() {
     print_header "Package Installation"
-
     # Check if the file exists
     if [[ ! -f "$package_file" ]]; then
         echo "Error: The file $package_file does not exist."
@@ -121,15 +147,12 @@ function install_packages() {
             fi
         fi
     done < "$package_file"
-
-    echo "Package installation completed."
-    echo
+    print_footer "Package installation completed."
 }
 
 # Function to set up repositories at specific locations
 function setup_repos() {
     print_header "Repositories Setup"
-
     # Loop through the repositories array and clone them to their respective directories
     for repo_url in "${!repos[@]}"; do
         dest_dir="${repos[$repo_url]}"
@@ -137,25 +160,25 @@ function setup_repos() {
         git clone "$repo_url" "$dest_dir" || { echo "Failed to clone $repo_url"; exit 1; }
         echo "Cloned $repo_url to $dest_dir"
     done
-
-    echo "Repositories setup completed."
-    echo
+    print_footer "Repositories setup completed."
 }
 
 # Main function to execute post-installation tasks
 function post_installation() {
 
     # Execute each section
+    startup
+    sleep $relax
     setup_dotfiles
-    sleep 1
+    sleep $relax
     create_directories
-    sleep 1
+    sleep $relax
     install_packages
-    sleep 1
+    sleep $relax
     setup_repos
-    sleep 1
-    echo "Post installation complete."
-    echo
+    sleep $relax
+    reboot_sys
+
 }
 
 ### MAIN ###
